@@ -4,204 +4,1115 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Liked Songs Manager</title>
+
   <style>
-    body{font-family:system-ui;background:#121212;color:white;margin:0;padding:20px}
-    .wrap{max-width:900px;margin:auto}
-    button{padding:12px 16px;margin:5px;border:0;border-radius:20px;font-weight:600}
-    .green{background:#1ed760;color:#000}
-    .red{background:#e44;color:white}
-    input{padding:12px;width:90%;max-width:520px;border-radius:8px;border:1px solid #777}
-    .song{padding:10px;border-bottom:1px solid #333;display:flex;gap:10px;align-items:center}
-    .artist{color:#aaa;font-size:.9em}
-    #status{margin:15px 0;color:#bbb}
+    *{box-sizing:border-box}
+
+    body{
+      font-family:system-ui,-apple-system,sans-serif;
+      background:#121212;
+      color:white;
+      margin:0;
+      padding:20px;
+    }
+
+    .wrap{
+      max-width:900px;
+      margin:auto;
+    }
+
+    h1{
+      margin-bottom:20px;
+    }
+
+    button{
+      padding:11px 16px;
+      margin:5px 3px;
+      border:0;
+      border-radius:20px;
+      font-weight:600;
+      cursor:pointer;
+    }
+
+    button:disabled{
+      opacity:.5;
+    }
+
+    .green{
+      background:#1ed760;
+      color:#000;
+    }
+
+    .red{
+      background:#e44;
+      color:white;
+    }
+
+    .blue{
+      background:#4d8df7;
+      color:white;
+    }
+
+    input{
+      padding:12px;
+      border-radius:8px;
+      border:1px solid #777;
+      font-size:16px;
+    }
+
+    #clientId{
+      width:90%;
+      max-width:520px;
+    }
+
+    #search{
+      width:100%;
+      margin:12px 0;
+    }
+
+    .controls{
+      background:#1d1d1d;
+      padding:15px;
+      border-radius:12px;
+      margin-bottom:15px;
+    }
+
+    .range{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin:10px 0;
+    }
+
+    .range input{
+      width:110px;
+    }
+
+    #status{
+      margin:15px 0;
+      color:#bbb;
+      font-size:16px;
+    }
+
+    #selectedCount{
+      color:#1ed760;
+      font-weight:700;
+    }
+
+    .song{
+      padding:10px 5px;
+      border-bottom:1px solid #333;
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+
+    .song input{
+      width:22px;
+      height:22px;
+      flex-shrink:0;
+    }
+
+    .number{
+      color:#777;
+      width:50px;
+      text-align:right;
+      flex-shrink:0;
+    }
+
+    .info{
+      min-width:0;
+    }
+
+    .title{
+      font-weight:700;
+    }
+
+    .artist{
+      color:#aaa;
+      font-size:.9em;
+      margin-top:2px;
+    }
+
+    .hidden{
+      display:none;
+    }
+
+    #progress{
+      margin:10px 0;
+      color:#1ed760;
+      font-weight:600;
+    }
+
+    .warning{
+      color:#bbb;
+      font-size:.9em;
+      margin-top:8px;
+    }
   </style>
 </head>
+
 <body>
+
 <div class="wrap">
+
   <h1>🎵 Liked Songs Manager</h1>
 
   <div id="setup">
     <p>Spotify Client ID:</p>
-    <input id="clientId" placeholder="Client ID hier einfügen">
+
+    <input
+      id="clientId"
+      placeholder="Client ID hier einfügen"
+    >
+
     <br><br>
-    <button class="green" onclick="login()">Mit Spotify verbinden</button>
+
+    <button
+      class="green"
+      onclick="login()"
+    >
+      Mit Spotify verbinden
+    </button>
   </div>
+
 
   <div id="app" hidden>
-    <button onclick="selectAll()">Alle auswählen</button>
-    <button onclick="clearSelection()">Auswahl aufheben</button>
-    <button class="red" onclick="removeSelected()">Ausgewählte entfernen</button>
-    <div id="status"></div>
+
+    <div class="controls">
+
+      <input
+        id="search"
+        type="search"
+        placeholder="🔎 Song oder Künstler suchen …"
+        oninput="render()"
+      >
+
+      <div class="range">
+
+        <strong>Bereich:</strong>
+
+        <input
+          id="fromNumber"
+          type="number"
+          min="1"
+          placeholder="Von"
+        >
+
+        <span>bis</span>
+
+        <input
+          id="toNumber"
+          type="number"
+          min="1"
+          placeholder="Bis"
+        >
+
+        <button
+          class="blue"
+          onclick="selectRange()"
+        >
+          Bereich auswählen
+        </button>
+
+      </div>
+
+      <div>
+
+        <button onclick="selectVisible()">
+          Sichtbare auswählen
+        </button>
+
+        <button onclick="selectAll()">
+          Alle auswählen
+        </button>
+
+        <button onclick="clearSelection()">
+          Auswahl aufheben
+        </button>
+
+      </div>
+
+      <div id="status"></div>
+
+      <div id="progress"></div>
+
+      <button
+        id="removeButton"
+        class="red"
+        onclick="removeSelected()"
+      >
+        Ausgewählte entfernen
+      </button>
+
+      <div class="warning">
+        Vor dem Entfernen wird immer noch einmal nachgefragt.
+      </div>
+
+    </div>
+
     <div id="songs"></div>
+
   </div>
+
 </div>
 
+
 <script>
-const redirectUri = location.origin + location.pathname;
-const scopes = "user-library-read user-library-modify";
+
+const redirectUri =
+  location.origin + location.pathname;
+
+const scopes =
+  "user-library-read user-library-modify";
+
 let token = "";
+
 let tracks = [];
 
+let selected = new Set();
+
+
 function randomString(n=64){
-  const chars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
-  const a=new Uint32Array(n);
+
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+
+  const a =
+    new Uint32Array(n);
+
   crypto.getRandomValues(a);
-  return Array.from(a,x=>chars[x%chars.length]).join("");
+
+  return Array.from(
+    a,
+    x => chars[x % chars.length]
+  ).join("");
+
 }
+
 
 async function sha256(s){
-  return crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));
+
+  return crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(s)
+  );
+
 }
+
 
 function base64url(buf){
-  return btoa(String.fromCharCode(...new Uint8Array(buf)))
-    .replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+
+  return btoa(
+    String.fromCharCode(
+      ...new Uint8Array(buf)
+    )
+  )
+  .replace(/\+/g,"-")
+  .replace(/\//g,"_")
+  .replace(/=+$/,"");
+
 }
+
 
 async function login(){
-  const clientId=document.getElementById("clientId").value.trim();
-  if(!clientId) return alert("Bitte zuerst deine Client ID eintragen.");
 
-  localStorage.setItem("spotify_client_id",clientId);
+  const clientId =
+    document
+      .getElementById("clientId")
+      .value
+      .trim();
 
-  const verifier=randomString();
-  sessionStorage.setItem("pkce_verifier",verifier);
-  const challenge=base64url(await sha256(verifier));
+  if(!clientId){
 
-  const p=new URLSearchParams({
-    client_id:clientId,
-    response_type:"code",
-    redirect_uri:redirectUri,
-    scope:scopes,
-    code_challenge_method:"S256",
-    code_challenge:challenge
-  });
+    return alert(
+      "Bitte zuerst deine Client ID eintragen."
+    );
 
-  location.href="https://accounts.spotify.com/authorize?"+p;
-}
-
-async function exchangeCode(code){
-  const clientId=localStorage.getItem("spotify_client_id");
-  const verifier=sessionStorage.getItem("pkce_verifier");
-
-  const body=new URLSearchParams({
-    client_id:clientId,
-    grant_type:"authorization_code",
-    code,
-    redirect_uri:redirectUri,
-    code_verifier:verifier
-  });
-
-  const r=await fetch("https://accounts.spotify.com/api/token",{
-    method:"POST",
-    headers:{"Content-Type":"application/x-www-form-urlencoded"},
-    body
-  });
-
-  if(!r.ok) throw new Error("Spotify-Anmeldung fehlgeschlagen.");
-
-  const data=await r.json();
-  token=data.access_token;
-  history.replaceState({},document.title,redirectUri);
-  await loadSongs();
-}
-
-async function loadSongs(){
-  document.getElementById("setup").hidden=true;
-  document.getElementById("app").hidden=false;
-  document.getElementById("status").textContent="Lieblingssongs werden geladen …";
-
-  tracks=[];
-  let url="https://api.spotify.com/v1/me/tracks?limit=50";
-
-  while(url){
-    const r=await fetch(url,{headers:{Authorization:"Bearer "+token}});
-    if(!r.ok) throw new Error("Songs konnten nicht geladen werden.");
-    const data=await r.json();
-
-    for(const item of data.items){
-      if(item.track) tracks.push(item.track);
-    }
-    url=data.next;
   }
 
-  render();
+  localStorage.setItem(
+    "spotify_client_id",
+    clientId
+  );
+
+  const verifier =
+    randomString();
+
+  sessionStorage.setItem(
+    "pkce_verifier",
+    verifier
+  );
+
+  const challenge =
+    base64url(
+      await sha256(verifier)
+    );
+
+  const p =
+    new URLSearchParams({
+
+      client_id:clientId,
+
+      response_type:"code",
+
+      redirect_uri:redirectUri,
+
+      scope:scopes,
+
+      code_challenge_method:"S256",
+
+      code_challenge:challenge
+
+    });
+
+  location.href =
+    "https://accounts.spotify.com/authorize?"
+    + p;
+
 }
 
-function render(){
-  document.getElementById("status").textContent =
-    tracks.length+" Lieblingssongs geladen.";
 
-  const box=document.getElementById("songs");
-  box.innerHTML="";
+async function exchangeCode(code){
 
-  tracks.forEach((t,i)=>{
-    const d=document.createElement("div");
-    d.className="song";
-    d.innerHTML=
-      '<input type="checkbox" class="pick" data-i="'+i+'">'+
-      '<div><b>'+escapeHtml(t.name)+'</b>'+
-      '<div class="artist">'+escapeHtml(t.artists.map(a=>a.name).join(", "))+
-      '</div></div>';
-    box.appendChild(d);
-  });
-}
+  const clientId =
+    localStorage.getItem(
+      "spotify_client_id"
+    );
 
-function escapeHtml(s){
-  const d=document.createElement("div");
-  d.textContent=s;
-  return d.innerHTML;
-}
+  const verifier =
+    sessionStorage.getItem(
+      "pkce_verifier"
+    );
 
-function selectAll(){
-  document.querySelectorAll(".pick").forEach(x=>x.checked=true);
-}
+  const body =
+    new URLSearchParams({
 
-function clearSelection(){
-  document.querySelectorAll(".pick").forEach(x=>x.checked=false);
-}
+      client_id:clientId,
 
-async function removeSelected(){
-  const chosen=[...document.querySelectorAll(".pick:checked")]
-    .map(x=>tracks[Number(x.dataset.i)]);
+      grant_type:
+        "authorization_code",
 
-  if(!chosen.length) return alert("Keine Songs ausgewählt.");
+      code,
 
-  if(!confirm(chosen.length+" ausgewählte Songs wirklich aus deinen Lieblingssongs entfernen?"))
-    return;
+      redirect_uri:
+        redirectUri,
 
-  for(let i=0;i<chosen.length;i+=40){
-    const uris=chosen.slice(i,i+40).map(t=>t.uri).join(",");
-    const r=await fetch(
-      "https://api.spotify.com/v1/me/library?uris="+encodeURIComponent(uris),
+      code_verifier:
+        verifier
+
+    });
+
+
+  const r =
+    await fetch(
+      "https://accounts.spotify.com/api/token",
       {
-        method:"DELETE",
-        headers:{Authorization:"Bearer "+token}
+
+        method:"POST",
+
+        headers:{
+          "Content-Type":
+          "application/x-www-form-urlencoded"
+        },
+
+        body
+
       }
     );
 
-    if(!r.ok) throw new Error("Entfernen fehlgeschlagen.");
+
+  if(!r.ok){
+
+    throw new Error(
+      "Spotify-Anmeldung fehlgeschlagen."
+    );
+
   }
 
-  const removed=new Set(chosen.map(t=>t.uri));
-  tracks=tracks.filter(t=>!removed.has(t.uri));
-  render();
-  alert(chosen.length+" Songs wurden entfernt.");
+
+  const data =
+    await r.json();
+
+  token =
+    data.access_token;
+
+
+  history.replaceState(
+    {},
+    document.title,
+    redirectUri
+  );
+
+
+  await loadSongs();
+
 }
 
-(async()=>{
-  const saved=localStorage.getItem("spotify_client_id");
-  if(saved) document.getElementById("clientId").value=saved;
 
-  const code=new URLSearchParams(location.search).get("code");
-  if(code){
-    try{
-      await exchangeCode(code);
-    }catch(e){
-      alert(e.message);
+async function loadSongs(){
+
+  document
+    .getElementById("setup")
+    .hidden = true;
+
+  document
+    .getElementById("app")
+    .hidden = false;
+
+
+  document
+    .getElementById("status")
+    .textContent =
+    "Lieblingssongs werden geladen …";
+
+
+  tracks = [];
+
+  selected.clear();
+
+
+  let url =
+    "https://api.spotify.com/v1/me/tracks?limit=50";
+
+
+  while(url){
+
+    const r =
+      await fetch(
+        url,
+        {
+          headers:{
+            Authorization:
+            "Bearer " + token
+          }
+        }
+      );
+
+
+    if(!r.ok){
+
+      throw new Error(
+        "Songs konnten nicht geladen werden."
+      );
+
     }
+
+
+    const data =
+      await r.json();
+
+
+    for(const item of data.items){
+
+      if(item.track){
+
+        tracks.push(
+          item.track
+        );
+
+      }
+
+    }
+
+
+    url =
+      data.next;
+
   }
+
+
+  document
+    .getElementById("toNumber")
+    .max =
+    tracks.length;
+
+
+  document
+    .getElementById("fromNumber")
+    .max =
+    tracks.length;
+
+
+  render();
+
+}
+
+
+function filteredTracks(){
+
+  const search =
+    document
+      .getElementById("search")
+      .value
+      .trim()
+      .toLowerCase();
+
+
+  return tracks
+    .map(
+      (track,index) =>
+      ({
+        track,
+        index
+      })
+    )
+    .filter(
+      ({track}) => {
+
+        if(!search)
+          return true;
+
+
+        const title =
+          track.name
+            .toLowerCase();
+
+
+        const artists =
+          track.artists
+            .map(a => a.name)
+            .join(" ")
+            .toLowerCase();
+
+
+        return (
+          title.includes(search)
+          ||
+          artists.includes(search)
+        );
+
+      }
+    );
+
+}
+
+
+function render(){
+
+  const list =
+    filteredTracks();
+
+
+  const status =
+    document.getElementById(
+      "status"
+    );
+
+
+  status.innerHTML =
+    tracks.length
+    + " Lieblingssongs geladen · "
+    + list.length
+    + " angezeigt · "
+    + '<span id="selectedCount">'
+    + selected.size
+    + " ausgewählt</span>";
+
+
+  const box =
+    document.getElementById(
+      "songs"
+    );
+
+
+  box.innerHTML = "";
+
+
+  list.forEach(
+    ({track,index}) => {
+
+      const d =
+        document.createElement(
+          "div"
+        );
+
+
+      d.className =
+        "song";
+
+
+      const checkbox =
+        document.createElement(
+          "input"
+        );
+
+
+      checkbox.type =
+        "checkbox";
+
+
+      checkbox.checked =
+        selected.has(
+          track.uri
+        );
+
+
+      checkbox.addEventListener(
+        "change",
+        () => {
+
+          if(checkbox.checked){
+
+            selected.add(
+              track.uri
+            );
+
+          }else{
+
+            selected.delete(
+              track.uri
+            );
+
+          }
+
+
+          updateCount();
+
+        }
+      );
+
+
+      const number =
+        document.createElement(
+          "div"
+        );
+
+
+      number.className =
+        "number";
+
+
+      number.textContent =
+        (index + 1) + ".";
+
+
+      const info =
+        document.createElement(
+          "div"
+        );
+
+
+      info.className =
+        "info";
+
+
+      const title =
+        document.createElement(
+          "div"
+        );
+
+
+      title.className =
+        "title";
+
+
+      title.textContent =
+        track.name;
+
+
+      const artist =
+        document.createElement(
+          "div"
+        );
+
+
+      artist.className =
+        "artist";
+
+
+      artist.textContent =
+        track.artists
+          .map(a => a.name)
+          .join(", ");
+
+
+      info.appendChild(
+        title
+      );
+
+
+      info.appendChild(
+        artist
+      );
+
+
+      d.appendChild(
+        checkbox
+      );
+
+
+      d.appendChild(
+        number
+      );
+
+
+      d.appendChild(
+        info
+      );
+
+
+      box.appendChild(
+        d
+      );
+
+    }
+  );
+
+}
+
+
+function updateCount(){
+
+  const c =
+    document.getElementById(
+      "selectedCount"
+    );
+
+
+  if(c){
+
+    c.textContent =
+      selected.size
+      + " ausgewählt";
+
+  }
+
+}
+
+
+function selectRange(){
+
+  const from =
+    Number(
+      document
+        .getElementById(
+          "fromNumber"
+        )
+        .value
+    );
+
+
+  const to =
+    Number(
+      document
+        .getElementById(
+          "toNumber"
+        )
+        .value
+    );
+
+
+  if(
+    !from
+    ||
+    !to
+    ||
+    from < 1
+    ||
+    to < from
+    ||
+    to > tracks.length
+  ){
+
+    return alert(
+      "Bitte einen gültigen Bereich eingeben."
+    );
+
+  }
+
+
+  for(
+    let i = from - 1;
+    i < to;
+    i++
+  ){
+
+    selected.add(
+      tracks[i].uri
+    );
+
+  }
+
+
+  render();
+
+}
+
+
+function selectVisible(){
+
+  const list =
+    filteredTracks();
+
+
+  list.forEach(
+    ({track}) => {
+
+      selected.add(
+        track.uri
+      );
+
+    }
+  );
+
+
+  render();
+
+}
+
+
+function selectAll(){
+
+  tracks.forEach(
+    track => {
+
+      selected.add(
+        track.uri
+      );
+
+    }
+  );
+
+
+  render();
+
+}
+
+
+function clearSelection(){
+
+  selected.clear();
+
+  render();
+
+}
+
+
+async function removeSelected(){
+
+  const chosen =
+    tracks.filter(
+      track =>
+        selected.has(
+          track.uri
+        )
+    );
+
+
+  if(!chosen.length){
+
+    return alert(
+      "Keine Songs ausgewählt."
+    );
+
+  }
+
+
+  const ok =
+    confirm(
+      chosen.length
+      + " ausgewählte Songs wirklich aus deinen Lieblingssongs entfernen?"
+    );
+
+
+  if(!ok)
+    return;
+
+
+  const removeButton =
+    document.getElementById(
+      "removeButton"
+    );
+
+
+  const progress =
+    document.getElementById(
+      "progress"
+    );
+
+
+  removeButton.disabled =
+    true;
+
+
+  try{
+
+    let removedCount =
+      0;
+
+
+    for(
+      let i = 0;
+      i < chosen.length;
+      i += 40
+    ){
+
+      const batch =
+        chosen.slice(
+          i,
+          i + 40
+        );
+
+
+      progress.textContent =
+        "Entferne Songs "
+        + (i + 1)
+        + "–"
+        + Math.min(
+            i + 40,
+            chosen.length
+          )
+        + " von "
+        + chosen.length
+        + " …";
+
+
+      const uris =
+        batch
+          .map(t => t.uri)
+          .join(",");
+
+
+      const r =
+        await fetch(
+
+          "https://api.spotify.com/v1/me/library?uris="
+          + encodeURIComponent(
+              uris
+            ),
+
+          {
+
+            method:"DELETE",
+
+            headers:{
+              Authorization:
+              "Bearer " + token
+            }
+
+          }
+
+        );
+
+
+      if(!r.ok){
+
+        throw new Error(
+          "Entfernen fehlgeschlagen."
+        );
+
+      }
+
+
+      removedCount +=
+        batch.length;
+
+    }
+
+
+    const removed =
+      new Set(
+        chosen.map(
+          t => t.uri
+        )
+      );
+
+
+    tracks =
+      tracks.filter(
+        t =>
+          !removed.has(
+            t.uri
+          )
+      );
+
+
+    selected.clear();
+
+
+    progress.textContent =
+      chosen.length
+      + " Songs erfolgreich entfernt. ✓";
+
+
+    render();
+
+
+    alert(
+      chosen.length
+      + " Songs wurden entfernt."
+    );
+
+
+  }catch(e){
+
+    progress.textContent =
+      "Fehler beim Entfernen.";
+
+    alert(
+      e.message
+    );
+
+  }finally{
+
+    removeButton.disabled =
+      false;
+
+  }
+
+}
+
+
+(async()=>{
+
+  const saved =
+    localStorage.getItem(
+      "spotify_client_id"
+    );
+
+
+  if(saved){
+
+    document
+      .getElementById(
+        "clientId"
+      )
+      .value =
+      saved;
+
+  }
+
+
+  const code =
+    new URLSearchParams(
+      location.search
+    )
+    .get("code");
+
+
+  if(code){
+
+    try{
+
+      await exchangeCode(
+        code
+      );
+
+    }catch(e){
+
+      alert(
+        e.message
+      );
+
+    }
+
+  }
+
 })();
+
 </script>
+
 </body>
 </html>
